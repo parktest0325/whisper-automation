@@ -1,22 +1,41 @@
 import os
-import whisper
+# import whisper
 from pathlib import Path
 
 # model = whisper.load_model("large-v3")
 
-from transformers import pipeline
 
-transcriber = pipeline(
-  "automatic-speech-recognition", 
-  model="jonatasgrosman/whisper-large-zh-cv11"
-)
+# from pydub import AudioSegment
+# from transformers import pipeline
 
-transcriber.model.config.forced_decoder_ids = (
-  transcriber.tokenizer.get_decoder_prompt_ids(
-    language="zh", 
-    task="transcribe"
-  )
-)
+# transcriber = pipeline(
+#   "automatic-speech-recognition", 
+#   model="jonatasgrosman/whisper-large-zh-cv11",
+#   device="cuda"
+# )
+
+# transcriber.model.config.forced_decoder_ids = (
+#   transcriber.tokenizer.get_decoder_prompt_ids(
+#     language="zh", 
+#     task="transcribe"
+#   )
+# )
+
+
+# transcriber = pipeline(
+#   "automatic-speech-recognition", 
+#   model="BELLE-2/Belle-whisper-large-v3-turbo-zh"
+# )
+
+# transcriber.model.config.forced_decoder_ids = (
+#   transcriber.tokenizer.get_decoder_prompt_ids(
+#     language="zh", 
+#     task="transcribe"
+#   )
+# )
+
+from faster_whisper import WhisperModel
+model = WhisperModel("large-v3", device="cuda", compute_type="float16")
 
 def generate_subtitle(folder_path):
     output_path = f"{folder_path}/auto_whisper_output"
@@ -27,21 +46,29 @@ def generate_subtitle(folder_path):
         if os.path.isdir(file_path):
             generate_subtitle(file_path)
         else:
-            if not os.path.isfile(file_path) or not file_name.lower().endswith(('.mp4', '.mp3', '.wav', '.m4a', '.flac', '.aac')):
+            if not os.path.isfile(file_path) or not file_name.lower().endswith(('.mp4')):
                 continue
 
             try:
                 os.makedirs(output_path, exist_ok=True)
                 print(f"Processing file: {file_name}")
-                # result = model.transcribe(file_path, language="zh")
-                result = transcriber(file_path)
-                print(result)
-                segments = result["segments"]
-                # segments = merge_segments_by_time(result["segments"])  
+                segments, info = model.transcribe(file_path, language="zh", beam_size=5)
+
+                # 몇몇 ai 모델은 wav 파일만 지원함
+                # audio = AudioSegment.from_file(file_path, format="mp4")
+                # audio_path = f"{folder_path}/{Path(file_name).stem}.wav"
+                # audio.export(audio_path, format="wav")
+                # result = transcriber(audio_path, return_timestamps=True)
+                # print(result)
+                # segments = result["segments"]
+                
+                segments = merge_segments_by_time(list(segments))
+
                 subtitle_file = Path(output_path) / f"{Path(file_name).stem}.srt"
 
                 with open(subtitle_file, "w", encoding="utf-8") as f:
                     for i, segment in enumerate(segments):
+                        # print(segment)
                         start = format_time(segment["start"])
                         end = format_time(segment["end"])
                         text = segment["text"]
@@ -52,23 +79,37 @@ def generate_subtitle(folder_path):
 
             except Exception as e:
                 print(f"Error processing {file_name}: {e}")          
+                raise
 
-def merge_segments_by_time(segments, min_gap=2.0):
+# 튜플과 딕셔너리를 잘 구분해서 사용해야함. 딕셔너리로 통일하면 좋을 것 같다. 
+# segment merge, to dict type
+def merge_segments_by_time(segments, merge_gap=1.0):
     merged_segments = []
-    current_segment = segments[0]
-    bef_text = ""
+    current_segment = {
+        "start": segments[0].start,
+        "end": segments[0].end,
+        "text": segments[0].text,
+    }
+
+    bef_text = current_segment["text"]
+    bef_start = current_segment["start"]
 
     for i in range(1, len(segments)):
         next_segment = segments[i]
         
-        if next_segment["start"] - current_segment["start"] < min_gap:
-            current_segment["end"] = next_segment["end"]
-            if bef_text != next_segment["text"]:
-                current_segment["text"] += " " + next_segment["text"]
-            bef_text = next_segment["text"]
+        if next_segment.start - bef_start <= merge_gap:
+            current_segment["end"] = next_segment.end
+            if bef_text != next_segment.text:
+                current_segment["text"] += " " + next_segment.text
         else:
             merged_segments.append(current_segment)
-            current_segment = next_segment
+            current_segment = {
+                "start": next_segment.start,
+                "end": next_segment.end,
+                "text": next_segment.text,
+            }
+        bef_text = next_segment.text
+        bef_start = next_segment.start
 
     # Add the last segment
     merged_segments.append(current_segment)
@@ -87,5 +128,5 @@ def format_time(seconds: float) -> str:
 
 
 if __name__ == "__main__":
-    target = r'D:\BaiduNetdiskDownload\test'
+    target = r''
     generate_subtitle(target)
