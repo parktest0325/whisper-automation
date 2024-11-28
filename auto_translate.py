@@ -12,6 +12,7 @@ client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),  # This is the default and can be omitted
 )
 
+SEGMENT_SEP = "!@#/!@#"
 
 def load_from_srt(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -53,7 +54,7 @@ def translate_text(texts, length):
                 },
                 {
                     "role": "system",
-                    "content": f"It consists of a total of {length} sentences, each separated by a newline. Please translate all sentences accurately and do not combine lines arbitrarily."
+                    "content": f"It consists of a total of {length} line sentences, each separated by a newline and '{SEGMENT_SEP}' character. Please translate all sentences accurately and do not combine lines arbitrarily."
                 },
                 {
                     "role": "system",
@@ -61,17 +62,17 @@ def translate_text(texts, length):
                 },
                 {"role": "user", "content": texts}
             ],
-            model="gpt-4o-mini",  # 사용 모델
+            model="gpt-4o",  # 사용 모델
             max_tokens=5000
         )
-        return response.choices[0].message.content.split('\n\n')
+        return [s.strip() for s in response.choices[0].message.content.split(f"\n{SEGMENT_SEP}")]
     except Exception as e:
         print(f"Error translating text: {texts[0]}\n{e}")
         raise
         # return text
 
 
-def translate_srt(src, dst, batch_size=10, context_size=2):
+def translate_srt(src, dst, batch_size=10, context_size=2, max_retries=5):
     subtitles = load_from_srt(src)
     translated_subtitles = []
 
@@ -80,15 +81,28 @@ def translate_srt(src, dst, batch_size=10, context_size=2):
         end_idx = min(i + batch_size + context_size, len(subtitles))
         context_batch = subtitles[start_idx:end_idx]
 
-        texts_to_translate = "\n\n".join([elem['text'] for elem in context_batch])
-        translated_batch = translate_text(texts_to_translate, len(context_batch))
+        texts_to_translate = f"\n{SEGMENT_SEP}\n".join([elem['text'] for elem in context_batch]) #+ f"\n{SEGMENT_SEP}\n"
+        translated_batch = None
 
-        # 번역한 라인의 갯수가 맞지 않는 경우.. (마음대로 병합해버릴 수 있으니)
-        if len(context_batch) != len(translated_batch):
-            print("hmm.. count is not match!!", len(context_batch), len(translated_batch) )
-            raise
+        # 우아한 재시도 로직
+        for attempt in range(max_retries):
+            try:
+                translated_batch = translate_text(texts_to_translate, len(context_batch))
 
-        # 번역 결과에서 현재 묶음만 저장
+                # 번역한 라인의 갯수가 맞지 않는 경우.. (마음대로 병합해버릴 수 있으니)
+                if len(context_batch) != len(translated_batch):
+                    # print("hmm.. count is not match!! ->", i, len(context_batch), len(translated_batch) )
+                    # print(context_batch)
+                    # print(translated_batch)
+                    # print(texts_to_translate)
+                    raise ValueError(f"Line count mismatch: Expected {len(context_batch)}, Got {len(translated_batch)}")
+                # 성공 시 루프 break
+                break
+            except Exception as e:
+                print(f"Retry {attempt + 1}/{max_retries} failed for batch {i}. Error: {e}")
+                if attempt + 1 == max_retries:
+                    raise RuntimeError(f"Failed after {max_retries} attempts for batch {i}") from e
+
         translated_current = translated_batch[context_size:context_size + batch_size]
         for j, elem in enumerate(subtitles[i:i + batch_size]):
             translated_subtitles.append({
