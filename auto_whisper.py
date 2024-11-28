@@ -128,5 +128,5 @@ def format_time(seconds: float) -> str:
 
 
 if __name__ == "__main__":
-    target = r''
+    target = r'D:\BaiduNetdiskDownload\test'
     generate_subtitle(target)
