@@ -14,6 +14,15 @@ client = OpenAI(
 
 SEGMENT_SEP = "!@#/!@#"
 
+RETRY_MODEL = [
+    "gpt-4o-mini",
+    "gpt-4o-mini",
+    "gpt-4o-mini",
+    "gpt-4o",
+    "gpt-4o",
+    "gpt-4o-turbo",
+]
+
 def load_from_srt(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
@@ -44,7 +53,7 @@ def save_to_srt(subtitles, output_path):
             file.write(f"{subtitle['start_time']} --> {subtitle['end_time']}\n")
             file.write(f"{subtitle['text']}\n\n")  # 텍스트 끝에 빈 줄 추가
 
-def translate_text(texts, length):
+def translate_text(texts, length, m="gpt-4o-mini"):
     try:
         response = client.chat.completions.create(
             messages=[
@@ -62,7 +71,7 @@ def translate_text(texts, length):
                 },
                 {"role": "user", "content": texts}
             ],
-            model="gpt-4o",  # 사용 모델
+            model=m,
             max_tokens=5000
         )
         return [s.strip() for s in response.choices[0].message.content.split(f"\n{SEGMENT_SEP}")]
@@ -72,7 +81,7 @@ def translate_text(texts, length):
         # return text
 
 
-def translate_srt(src, dst, batch_size=10, context_size=2, max_retries=5):
+def translate_srt(src, dst, batch_size=10, context_size=2, max_retries=len(RETRY_MODEL)-1):
     subtitles = load_from_srt(src)
     translated_subtitles = []
 
@@ -87,7 +96,7 @@ def translate_srt(src, dst, batch_size=10, context_size=2, max_retries=5):
         # 우아한 재시도 로직
         for attempt in range(max_retries):
             try:
-                translated_batch = translate_text(texts_to_translate, len(context_batch))
+                translated_batch = translate_text(texts_to_translate, len(context_batch), RETRY_MODEL[attempt])
 
                 # 번역한 라인의 갯수가 맞지 않는 경우.. (마음대로 병합해버릴 수 있으니)
                 if len(context_batch) != len(translated_batch):
@@ -95,7 +104,7 @@ def translate_srt(src, dst, batch_size=10, context_size=2, max_retries=5):
                     # print(context_batch)
                     # print(translated_batch)
                     # print(texts_to_translate)
-                    raise ValueError(f"Line count mismatch: Expected {len(context_batch)}, Got {len(translated_batch)}")
+                    raise ValueError(f"Line count mismatch: using {RETRY_MODEL[attempt]} Expected {len(context_batch)}, Got {len(translated_batch)}")
                 # 성공 시 루프 break
                 break
             except Exception as e:
@@ -103,7 +112,8 @@ def translate_srt(src, dst, batch_size=10, context_size=2, max_retries=5):
                 if attempt + 1 == max_retries:
                     raise RuntimeError(f"Failed after {max_retries} attempts for batch {i}") from e
 
-        translated_current = translated_batch[context_size:context_size + batch_size]
+        begin = 0 if i == 0 else context_size
+        translated_current = translated_batch[begin : begin + batch_size]
         for j, elem in enumerate(subtitles[i:i + batch_size]):
             translated_subtitles.append({
                 'index': elem['index'],
@@ -152,6 +162,6 @@ def translate_subtitle(folder_path, path_ends):
 
 
 if __name__ == "__main__":
-    target = r'D:\BaiduNetdiskDownload\test'
+    target = r'D:\BaiduNetdiskDownload\'
     path_ends = r'auto_whisper_output'
     translate_subtitle(target, path_ends)
