@@ -45,7 +45,6 @@ def save_to_srt(subtitles, output_path):
 
 def translate_text(texts, length):
     try:
-        print(texts)
         response = client.chat.completions.create(
             messages=[
                 {
@@ -62,10 +61,9 @@ def translate_text(texts, length):
                 },
                 {"role": "user", "content": texts}
             ],
-            model="gpt-4o",  # 사용 모델
+            model="gpt-4o-mini",  # 사용 모델
             max_tokens=5000
         )
-        print(response)
         return response.choices[0].message.content.split('\n\n')
     except Exception as e:
         print(f"Error translating text: {texts[0]}\n{e}")
@@ -75,7 +73,6 @@ def translate_text(texts, length):
 
 def translate_srt(src, dst, batch_size=10, context_size=2):
     subtitles = load_from_srt(src)
-    print
     translated_subtitles = []
 
     for i in range(0, len(subtitles), batch_size):
@@ -85,6 +82,11 @@ def translate_srt(src, dst, batch_size=10, context_size=2):
 
         texts_to_translate = "\n\n".join([elem['text'] for elem in context_batch])
         translated_batch = translate_text(texts_to_translate, len(context_batch))
+
+        # 번역한 라인의 갯수가 맞지 않는 경우.. (마음대로 병합해버릴 수 있으니)
+        if len(context_batch) != len(translated_batch):
+            print("hmm.. count is not match!!", len(context_batch), len(translated_batch) )
+            raise
 
         # 번역 결과에서 현재 묶음만 저장
         translated_current = translated_batch[context_size:context_size + batch_size]
@@ -113,12 +115,22 @@ def translate_subtitle(folder_path, path_ends):
             if not os.path.isfile(file_path) or not file_name.lower().endswith(('.mp4')):
                 continue
             try:
-                translated_name = translate_text(file_name, 1)[0].replace(' ','')
-                os.rename(file_path, f"{folder_path}/{translated_name}")
 
                 org_subtitle_file = Path(subtitle_folder) / f"{Path(file_name).stem}.srt"
+                if os.path.isfile(f"{org_subtitle_file}_done"):
+                    print(f"skip {file_name} file!")
+                    continue
+
+                translated_name = translate_text(file_name, 1)[0].replace(' ','')
+                print(f"Processing file: {file_name} -> {translated_name}")
+
                 translated_subtitle_file = Path(subtitle_folder) / f"{Path(translated_name).stem}.srt"
                 translate_srt(org_subtitle_file, translated_subtitle_file)
+
+                renamed_file = f"{folder_path}/{translated_name}"
+                os.rename(file_path, renamed_file)
+                # 완료된 파일 체크
+                Path(f"{translated_subtitle_file}_done").touch(exist_ok=True) 
 
             except Exception as e:
                 print(f"Error processing {file_name}: {e}")          
