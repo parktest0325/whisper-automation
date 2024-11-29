@@ -1,4 +1,5 @@
 import os
+import sys
 # import whisper
 from pathlib import Path
 
@@ -128,5 +129,8 @@ def format_time(seconds: float) -> str:
 
 
 if __name__ == "__main__":
-    target = r'D:\BaiduNetdiskDownload\test'
+    if len(sys.argv) < 2:
+        print("Usage: python script.py <target_path>")
+        sys.exit(1)
+    target = sys.argv[1]
     generate_subtitle(target)

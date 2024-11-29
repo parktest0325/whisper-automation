@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 import re
 from dotenv import load_dotenv
@@ -20,7 +21,17 @@ RETRY_MODEL = [
     "gpt-4o-mini",
     "gpt-4o",
     "gpt-4o",
-    "gpt-4o-turbo",
+    "o1-mini",
+    "o1-preview",
+    "gpt-4o",
+    "o1-mini",
+    "o1-preview",
+    "gpt-4o",
+    "o1-mini",
+    "o1-preview",
+    "gpt-4o",
+    "o1-mini",
+    "o1-preview",
 ]
 
 def load_from_srt(file_path):
@@ -145,7 +156,7 @@ def translate_subtitle(folder_path, path_ends):
                     print(f"skip {file_name} file!")
                     continue
 
-                translated_name = translate_text(file_name, 1)[0].replace(' ','')
+                translated_name = re.sub(r'[\/:*?"<>|]', '',translate_text(file_name, 1)[0].replace(' ',''))
                 print(f"Processing file: {file_name} -> {translated_name}")
 
                 translated_subtitle_file = Path(subtitle_folder) / f"{Path(translated_name).stem}.srt"
@@ -162,6 +173,9 @@ def translate_subtitle(folder_path, path_ends):
 
 
 if __name__ == "__main__":
-    target = r'D:\BaiduNetdiskDownload\'
+    if len(sys.argv) < 2:
+        print("Usage: python script.py <target_path>")
+        sys.exit(1)
+    target = sys.argv[1]
     path_ends = r'auto_whisper_output'
     translate_subtitle(target, path_ends)
