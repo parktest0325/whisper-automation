@@ -69,15 +69,15 @@ def translate_text(texts, length, m="gpt-4o-mini"):
         response = client.chat.completions.create(
             messages=[
                 {
-                    "role": "system",
+                    "role": "user" if m.startswith("o1") else "system",
                     "content": "The following text needs to be translated from Chinese to Korean. Do not change the English words in the sentence to Korean."
                 },
                 {
-                    "role": "system",
+                    "role": "user" if m.startswith("o1") else "system",
                     "content": f"It consists of a total of {length} line sentences, each separated by a newline and '{SEGMENT_SEP}' character. Please translate all sentences accurately and do not combine lines arbitrarily."
                 },
                 {
-                    "role": "system",
+                    "role": "user" if m.startswith("o1") else "system",
                     "content": "This text is part of subtitles for a lecture on gaming, hacking, security, Android, and Windows. Technical terms (e.g., Android, Windows, DLL, Malware) should be written in English or translated into appropriate Korean expressions where necessary."
                 },
                 {"role": "user", "content": texts}
