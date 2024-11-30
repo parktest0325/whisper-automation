@@ -38,6 +38,8 @@ from pathlib import Path
 from faster_whisper import WhisperModel
 model = WhisperModel("large-v3", device="cuda", compute_type="float16")
 
+valid_extensions = ['.mp4', '.mkv', '.wmv']
+
 def generate_subtitle(folder_path):
     output_path = f"{folder_path}/auto_whisper_output"
 
@@ -47,7 +49,7 @@ def generate_subtitle(folder_path):
         if os.path.isdir(file_path):
             generate_subtitle(file_path)
         else:
-            if not os.path.isfile(file_path) or not file_name.lower().endswith(('.mp4')):
+            if not os.path.isfile(file_path) or not any(file_name.lower().endswith(ext) for ext in valid_extensions):
                 continue
 
             try:
