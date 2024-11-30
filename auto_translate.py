@@ -83,7 +83,6 @@ def translate_text(texts, length, m="gpt-4o-mini"):
                 {"role": "user", "content": texts}
             ],
             model=m,
-            max_tokens=5000
         )
         return [s.strip() for s in response.choices[0].message.content.split(f"\n{SEGMENT_SEP}")]
     except Exception as e:

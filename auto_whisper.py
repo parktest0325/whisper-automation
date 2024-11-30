@@ -52,6 +52,11 @@ def generate_subtitle(folder_path):
 
             try:
                 os.makedirs(output_path, exist_ok=True)
+                subtitle_file = Path(output_path) / f"{Path(file_name).stem}.srt"
+                if os.path.isfile(f"{subtitle_file}"):
+                    print(f"skip {file_name} file!")
+                    continue
+
                 print(f"Processing file: {file_name}")
                 segments, info = model.transcribe(file_path, language="zh", beam_size=5)
 
@@ -64,8 +69,6 @@ def generate_subtitle(folder_path):
                 # segments = result["segments"]
                 
                 segments = merge_segments_by_time(list(segments))
-
-                subtitle_file = Path(output_path) / f"{Path(file_name).stem}.srt"
 
                 with open(subtitle_file, "w", encoding="utf-8") as f:
                     for i, segment in enumerate(segments):
