@@ -54,10 +54,10 @@ def generate_subtitle(folder_path):
                 os.makedirs(output_path, exist_ok=True)
                 subtitle_file = Path(output_path) / f"{Path(file_name).stem}.srt"
                 if os.path.isfile(f"{subtitle_file}"):
-                    print(f"skip {file_name} file!")
+                    print(f"skip {file_path} file!")
                     continue
 
-                print(f"Processing file: {file_name}")
+                print(f"Processing file: {file_path}")
                 segments, info = model.transcribe(file_path, language="zh", beam_size=5)
 
                 # 몇몇 ai 모델은 wav 파일만 지원함

@@ -152,11 +152,11 @@ def translate_subtitle(folder_path, path_ends):
 
                 org_subtitle_file = Path(subtitle_folder) / f"{Path(file_name).stem}.srt"
                 if os.path.isfile(f"{org_subtitle_file}_done"):
-                    print(f"skip {file_name} file!")
+                    print(f"skip {file_path} file!")
                     continue
 
                 translated_name = re.sub(r'[\/:*?"<>|]', '',translate_text(file_name, 1)[0].replace(' ',''))
-                print(f"Processing file: {file_name} -> {translated_name}")
+                print(f"Processing file: {file_path} -> {translated_name}")
 
                 translated_subtitle_file = Path(subtitle_folder) / f"{Path(translated_name).stem}.srt"
                 translate_srt(org_subtitle_file, translated_subtitle_file)
