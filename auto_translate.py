@@ -16,22 +16,21 @@ client = OpenAI(
 SEGMENT_SEP = "!@#/!@#"
 
 RETRY_MODEL = [
-    "gpt-4o-mini",
-    "gpt-4o-mini",
-    "gpt-4o-mini",
-    "gpt-4o",
-    "gpt-4o",
-    "o1-mini",
-    "o1-preview",
-    "gpt-4o",
-    "o1-mini",
-    "o1-preview",
-    "gpt-4o",
-    "o1-mini",
-    "o1-preview",
-    "gpt-4o",
-    "o1-mini",
-    "o1-preview",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
+    "gpt-4.1",
 ]
 
 def load_from_srt(file_path):
@@ -64,23 +63,41 @@ def save_to_srt(subtitles, output_path):
             file.write(f"{subtitle['start_time']} --> {subtitle['end_time']}\n")
             file.write(f"{subtitle['text']}\n\n")  # 텍스트 끝에 빈 줄 추가
 
-def translate_text(texts, length, m="gpt-4o-mini"):
+def translate_text(texts, length, m="gpt-4.1"):
     try:
         response = client.chat.completions.create(
-            messages=[
+            messages= [
                 {
-                    "role": "user" if m.startswith("o1") else "system",
-                    "content": "The following text needs to be translated from Chinese to Korean. Do not change the English words in the sentence to Korean."
+                    "role": "system",
+                    "content": (
+                        "You are a professional subtitle translator translating Chinese to Korean. "
+                        "Keep all technical terms such as Android, Windows, Frida, DLL, Hooking, Rooting, FART, and so on, in English or use proper Korean terminology without paraphrasing or guessing. "
+                        "Translate each line accurately and do not merge or split sentences arbitrarily. "
+                        "This is subtitle text for a lecture on Android security, reverse engineering, hacking, and tools like Frida and FART. "
+                        "Maintain the same number of lines. Avoid any stylistic rewriting."
+                    )
                 },
                 {
-                    "role": "user" if m.startswith("o1") else "system",
-                    "content": f"It consists of a total of {length} line sentences, each separated by a newline and '{SEGMENT_SEP}' character. Please translate all sentences accurately and do not combine lines arbitrarily."
+                    "role": "user",
+                    "content": f"The following consists of {length} subtitle lines, separated by the special marker '{SEGMENT_SEP}'. Translate each part line by line, preserving the separator and sentence count."
                 },
                 {
-                    "role": "user" if m.startswith("o1") else "system",
-                    "content": "This text is part of subtitles for a lecture on gaming, hacking, security, Android, and Windows. Technical terms (e.g., Android, Windows, DLL, Malware) should be written in English or translated into appropriate Korean expressions where necessary."
+                    "role": "user",
+                    "content": texts
                 },
-                {"role": "user", "content": texts}
+                # {
+                #     "role": "user" if m.startswith("o1") else "system",
+                #     "content": "The following text needs to be translated from Chinese to Korean. Do not change the English words in the sentence to Korean."
+                # },
+                # {
+                #     "role": "user" if m.startswith("o1") else "system",
+                #     "content": f"It consists of a total of {length} line sentences, each separated by a newline and '{SEGMENT_SEP}' character. Please translate all sentences accurately and do not combine lines arbitrarily."
+                # },
+                # {
+                #     "role": "user" if m.startswith("o1") else "system",
+                #     "content": "This text is part of subtitles for a lecture on gaming, hacking, security, Android, and Windows. Technical terms (e.g., Android, Windows, DLL, Malware) should be written in English or translated into appropriate Korean expressions where necessary."
+                # },
+                # {"role": "user", "content": texts}
             ],
             model=m,
         )

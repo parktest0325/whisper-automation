@@ -2,6 +2,7 @@ import os
 import sys
 # import whisper
 from pathlib import Path
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 # model = whisper.load_model("large-v3")
 
@@ -35,8 +36,12 @@ from pathlib import Path
 #   )
 # )
 
+
 from faster_whisper import WhisperModel
-model = WhisperModel("large-v3", device="cuda", compute_type="float16")
+model = WhisperModel("large-v3", device="cuda", compute_type="float32")
+
+# ct2-transformers-converter --model BELLE-2/Belle-whisper-large-v3-zh --output_dir belle-ct2 --copy_files tokenizer.json preprocessor_config.json --quantization float16
+# model = WhisperModel("belle-ct2", device="cuda", compute_type="float16")
 
 valid_extensions = ['.mp4', '.mkv', '.wmv']
 
@@ -60,9 +65,15 @@ def generate_subtitle(folder_path):
                     continue
 
                 print(f"Processing file: {file_path}")
-                segments, info = model.transcribe(file_path, language="zh", beam_size=5)
+                segments, info = model.transcribe(
+                    file_path,
+                    language="zh",
+                    vad_filter=True,
+                    vad_parameters={"threshold": 0.7, "min_silence_duration_ms": 1000},
+                    beam_size=5
+                )
 
-                # 몇몇 ai 모델은 wav 파일만 지원함
+                # # 몇몇 ai 모델은 wav 파일만 지원함
                 # audio = AudioSegment.from_file(file_path, format="mp4")
                 # audio_path = f"{folder_path}/{Path(file_name).stem}.wav"
                 # audio.export(audio_path, format="wav")
@@ -70,14 +81,23 @@ def generate_subtitle(folder_path):
                 # print(result)
                 # segments = result["segments"]
                 
-                segments = merge_segments_by_time(list(segments))
+                # "belle-ct2"에서 이걸 사용하면 너무 많이 병합됨 
+                # segments = merge_segments_by_time(list(segments))
+                # with open(subtitle_file, "w", encoding="utf-8") as f:
+                #     for i, segment in enumerate(segments):
+                #         # print(segment)
+                #         start = format_time(segment["start"])
+                #         end = format_time(segment["end"])
+                #         text = segment["text"]
 
+                #         f.write(f"{i + 1}\n{start} --> {end}\n{text.strip()}\n\n")
+                # "belle-ct2" 등 merge 안하기
                 with open(subtitle_file, "w", encoding="utf-8") as f:
                     for i, segment in enumerate(segments):
                         # print(segment)
-                        start = format_time(segment["start"])
-                        end = format_time(segment["end"])
-                        text = segment["text"]
+                        start = format_time(segment.start)
+                        end = format_time(segment.end)
+                        text = segment.text
 
                         f.write(f"{i + 1}\n{start} --> {end}\n{text.strip()}\n\n")
                 

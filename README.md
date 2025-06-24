@@ -10,3 +10,10 @@ You can use it by modifying the script a little.
   * If it fails, it takes 5 more retries with increasingly better models before it finally achieves its goal.
 
 I'm not sure if I'll continue updating, but good luck!
+
+```ps
+uv venv -p 3.12
+.venv\Scripts\activate
+uv pip install -r .\requirements.txt
+uv run .\auto_whisper.py <PATH>
+```
