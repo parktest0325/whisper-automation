@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 from dotenv import load_dotenv
 from openai import OpenAI
+import json
 
 # .env 파일 로드
 load_dotenv()
@@ -24,11 +25,14 @@ RETRY_MODEL = [
     "gpt-4.1",
     "gpt-4.1",
     "gpt-4.1",
+    "gpt-4.1-mini",
     "gpt-4.1",
     "gpt-4.1",
     "gpt-4.1",
     "gpt-4.1",
-    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4.1-mini",
+    "gpt-4.1-mini",
     "gpt-4.1",
     "gpt-4.1",
 ]
@@ -66,6 +70,7 @@ def save_to_srt(subtitles, output_path):
 def translate_text(texts, length, m="gpt-4.1"):
     try:
         response = client.chat.completions.create(
+            # response_format={"type": "json_object"}
             messages= [
                 {
                     "role": "system",
@@ -81,33 +86,29 @@ def translate_text(texts, length, m="gpt-4.1"):
                     "role": "user",
                     "content": f"The following consists of {length} subtitle lines, separated by the special marker '{SEGMENT_SEP}'. Translate each part line by line, preserving the separator and sentence count."
                 },
+                # {
+                #     "role": "user",
+                #     "content": (f"Return **exactly {length} translated lines** as a JSON "
+                #                 f'object like {{"lines":["...", "..."]}}. '
+                #                 "Do NOT add extra keys, comments or line breaks.")
+                # },
                 {
                     "role": "user",
                     "content": texts
                 },
-                # {
-                #     "role": "user" if m.startswith("o1") else "system",
-                #     "content": "The following text needs to be translated from Chinese to Korean. Do not change the English words in the sentence to Korean."
-                # },
-                # {
-                #     "role": "user" if m.startswith("o1") else "system",
-                #     "content": f"It consists of a total of {length} line sentences, each separated by a newline and '{SEGMENT_SEP}' character. Please translate all sentences accurately and do not combine lines arbitrarily."
-                # },
-                # {
-                #     "role": "user" if m.startswith("o1") else "system",
-                #     "content": "This text is part of subtitles for a lecture on gaming, hacking, security, Android, and Windows. Technical terms (e.g., Android, Windows, DLL, Malware) should be written in English or translated into appropriate Korean expressions where necessary."
-                # },
-                # {"role": "user", "content": texts}
             ],
+            temperature=0.3,
             model=m,
         )
         return [s.strip() for s in response.choices[0].message.content.split(f"\n{SEGMENT_SEP}")]
+        # data = json.loads(response.choices[0].message.content)
+        # return [s.strip() for s in data["lines"]]
     except Exception as e:
         print(f"Error translating text: {texts[0]}\n{e}")
         raise
         # return text
 
-
+# TODO: json으로 던져주고 json으로 응답받기
 def translate_srt(src, dst, batch_size=10, context_size=2, max_retries=len(RETRY_MODEL)-1):
     subtitles = load_from_srt(src)
     translated_subtitles = []
@@ -118,6 +119,7 @@ def translate_srt(src, dst, batch_size=10, context_size=2, max_retries=len(RETRY
         context_batch = subtitles[start_idx:end_idx]
 
         texts_to_translate = f"\n{SEGMENT_SEP}\n".join([elem['text'] for elem in context_batch]) #+ f"\n{SEGMENT_SEP}\n"
+        # texts_to_translate = [elem['text'] for elem in context_batch]
         translated_batch = None
 
         # 우아한 재시도 로직
@@ -172,7 +174,7 @@ def translate_subtitle(folder_path, path_ends):
                     print(f"skip {file_path} file!")
                     continue
 
-                translated_name = re.sub(r'[\/:*?"<>|]', '',translate_text(file_name, 1)[0].replace(' ',''))
+                translated_name = re.sub(r'[\/:*?"<>|]', '',translate_text(file_name, 1, "gpt-4.1")[0].replace(' ',''))
                 print(f"Processing file: {file_path} -> {translated_name}")
 
                 translated_subtitle_file = Path(subtitle_folder) / f"{Path(translated_name).stem}.srt"

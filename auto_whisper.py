@@ -46,20 +46,19 @@ model = WhisperModel("large-v3", device="cuda", compute_type="float32")
 valid_extensions = ['.mp4', '.mkv', '.wmv']
 
 def generate_subtitle(folder_path):
-    output_path = f"{folder_path}/auto_whisper_output"
+    folder_path = Path(folder_path) 
+    output_path = folder_path / "auto_whisper_output"
 
-    for file_name in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, file_name)
-
+    for file_path in folder_path.iterdir():
         if os.path.isdir(file_path):
             generate_subtitle(file_path)
         else:
-            if not os.path.isfile(file_path) or not any(file_name.lower().endswith(ext) for ext in valid_extensions):
+            if not file_path.is_file() or file_path.suffix.lower() not in valid_extensions:
                 continue
 
             try:
-                os.makedirs(output_path, exist_ok=True)
-                subtitle_file = Path(output_path) / f"{Path(file_name).stem}.srt"
+                output_path.mkdir(parents=True, exist_ok=True)
+                subtitle_file = output_path / f"{file_path.stem}.srt"
                 if os.path.isfile(f"{subtitle_file}"):
                     print(f"skip {file_path} file!")
                     continue
@@ -104,7 +103,7 @@ def generate_subtitle(folder_path):
                 print(f"Subtitles saved to {subtitle_file}")
 
             except Exception as e:
-                print(f"Error processing {file_name}: {e}")          
+                print(f"Error processing {file_path.stem}: {e}")          
                 raise
 
 # 튜플과 딕셔너리를 잘 구분해서 사용해야함. 딕셔너리로 통일하면 좋을 것 같다. 
