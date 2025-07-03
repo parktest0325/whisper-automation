@@ -103,7 +103,7 @@ def generate_subtitle(folder_path):
                 print(f"Subtitles saved to {subtitle_file}")
 
             except Exception as e:
-                print(f"Error processing {file_path.stem}: {e}")          
+                print(f"Error processing {file_path.stem}: {e}")
                 raise
 
 # 튜플과 딕셔너리를 잘 구분해서 사용해야함. 딕셔너리로 통일하면 좋을 것 같다. 
